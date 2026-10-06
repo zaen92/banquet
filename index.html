@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>정산하기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F6; --card:#FFFFFF; --fill:#F2F4F6; --fill-2:#E5E8EB;
+  --ink:#191F28; --ink-2:#333D4B; --sub:#4E5968; --muted:#8B95A1; --faint:#B0B8C1;
+  --blue:#3182F6; --blue-press:#1B64DA; --blue-soft:#E8F3FF;
+  --red:#F04452; --red-soft:#FFEEEE; --green:#03B26C;
+  --font:"Pretendard Variable","Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101013; --card:#1C1C21; --fill:#2A2A31; --fill-2:#36363E;
+    --ink:#F2F4F6; --ink-2:#DDE1E6; --sub:#B0B8C1; --muted:#8B95A1; --faint:#5C636C;
+    --blue:#4C93FF; --blue-press:#3182F6; --blue-soft:#1A2A44; --red:#FF6370; --red-soft:#3A1E22; --green:#2FD08A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101013; --card:#1C1C21; --fill:#2A2A31; --fill-2:#36363E;
+  --ink:#F2F4F6; --ink-2:#DDE1E6; --sub:#B0B8C1; --muted:#8B95A1; --faint:#5C636C;
+  --blue:#4C93FF; --blue-press:#3182F6; --blue-soft:#1A2A44; --red:#FF6370; --red-soft:#3A1E22; --green:#2FD08A;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit;letter-spacing:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+input{min-width:0}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 120px}
+.num{font-variant-numeric:tabular-nums}
+
+/* trips */
+.trips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none}
+.trips::-webkit-scrollbar{display:none}
+.trip{flex:none;padding:8px 14px;border-radius:999px;font-size:15px;font-weight:600;color:var(--sub);background:transparent}
+.trip[aria-current="true"]{background:var(--ink);color:var(--card)}
+.trip.add{color:var(--muted)}
+
+/* hero */
+.hero{padding:12px 4px 24px}
+.trip-name{display:block;width:100%;border:0;background:transparent;font-size:22px;font-weight:700;color:var(--ink);padding:0}
+.trip-name::placeholder{color:var(--faint)}
+.trip-name:focus{outline:none}
+.hero-total{font-size:34px;font-weight:800;letter-spacing:-0.03em;margin-top:6px;line-height:1.2}
+.hero-sub{font-size:15px;color:var(--muted);margin-top:4px}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:10px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.dot.on{background:var(--green)}
+
+/* card */
+.card{background:var(--card);border-radius:20px;padding:22px 20px;margin-bottom:12px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.card-h h2{margin:0;font-size:19px;font-weight:700}
+.card-h .count{color:var(--blue);margin-left:4px}
+.link{color:var(--blue);font-size:15px;font-weight:600;padding:4px 2px}
+.link:active{color:var(--blue-press)}
+.hint{color:var(--muted);font-size:14px;margin:0}
+
+/* avatars */
+.av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff;background:var(--c,#8B95A1)}
+.av.sm{width:24px;height:24px;font-size:11px}
+
+/* members */
+.members{display:flex;flex-wrap:wrap;gap:8px}
+.member{display:inline-flex;align-items:center;gap:8px;background:var(--fill);border-radius:999px;padding:4px 6px 4px 4px}
+.member .av{width:28px;height:28px;font-size:12px}
+.member input{border:0;background:transparent;font-weight:600;font-size:15px;width:calc(var(--len,3) * 1em + 4px);max-width:8em;padding:2px 0}
+.member input:focus{outline:none}
+.member:focus-within{box-shadow:0 0 0 2px var(--blue) inset}
+.member .x{width:24px;height:24px;border-radius:50%;color:var(--muted);font-size:15px;display:grid;place-items:center}
+.member .x:hover{background:var(--fill-2);color:var(--ink)}
+.add-member{display:flex;gap:8px;margin-top:14px}
+.field{flex:1;border:0;background:var(--fill);border-radius:12px;padding:12px 14px;font-size:16px}
+.field::placeholder{color:var(--faint)}
+.field:focus{outline:none;box-shadow:0 0 0 2px var(--blue) inset;background:var(--card)}
+.btn{border-radius:12px;padding:12px 16px;font-weight:600;font-size:15px;background:var(--blue-soft);color:var(--blue);white-space:nowrap}
+.btn:active{transform:scale(.98)}
+.btn.solid{background:var(--blue);color:#fff}
+.btn.grey{background:var(--fill);color:var(--sub)}
+.btn.sm{padding:7px 12px;border-radius:10px;font-size:14px}
+
+/* items */
+.items{display:flex;flex-direction:column}
+.item{padding:18px 0;border-top:1px solid var(--fill)}
+.item:first-child{border-top:0;padding-top:4px}
+.item.warn .item-amt{color:var(--red)}
+.item-row{display:flex;align-items:center;gap:8px}
+.in-iname{flex:1;border:0;background:transparent;font-size:16px;font-weight:600;color:var(--ink-2);padding:2px 0}
+.in-iname::placeholder{color:var(--faint);font-weight:500}
+.in-iname:focus,.in-amt:focus,.in-memo:focus{outline:none}
+.more{width:32px;height:32px;border-radius:10px;color:var(--faint);font-size:18px;display:grid;place-items:center}
+.more:hover{background:var(--fill);color:var(--red)}
+.item-amt{display:flex;align-items:baseline;gap:2px;margin-top:2px}
+.in-amt{border:0;background:transparent;font-size:24px;font-weight:700;letter-spacing:-0.02em;width:100%;padding:0}
+.in-amt::placeholder{color:var(--faint)}
+.item-amt span{font-size:20px;font-weight:700}
+.item-meta{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.payer{position:relative;display:inline-flex;align-items:center;background:var(--fill);border-radius:8px;font-size:13px;color:var(--sub)}
+.payer select{appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:5px 24px 5px 10px;font-size:13px;font-weight:600;color:var(--sub);cursor:pointer}
+.payer::after{content:"";position:absolute;right:10px;top:50%;width:6px;height:6px;border:solid var(--muted);border-width:0 1.5px 1.5px 0;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.payer.none select{color:var(--red)}
+.in-memo{flex:1;min-width:100px;border:0;background:transparent;font-size:13px;color:var(--muted);padding:5px 0}
+.in-memo::placeholder{color:var(--faint)}
+.parts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.part{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--blue-soft);font-size:13px;font-weight:600;color:var(--ink-2);transition:background .15s}
+.part .pv{color:var(--blue);font-weight:700}
+.part[aria-pressed="false"]{background:var(--fill);color:var(--faint)}
+.part[aria-pressed="false"] .av{background:var(--fill-2)!important;color:var(--faint)}
+.part[aria-pressed="false"] .pv{display:none}
+.split-toggle{margin-top:10px;font-size:13px;color:var(--muted);font-weight:500}
+.split-toggle:hover{color:var(--blue)}
+.custom{margin-top:10px;background:var(--fill);border-radius:14px;padding:6px 14px}
+.custom[hidden]{display:none}
+.crow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.crow .cn{flex:1;font-size:14px;color:var(--sub);font-weight:500}
+.crow input{width:110px;border:0;background:var(--card);border-radius:8px;padding:7px 10px;text-align:right;font-size:14px;font-weight:600}
+.crow input::placeholder{color:var(--muted);font-weight:500}
+.crow input.fixed{color:var(--blue)}
+.crow input:focus{outline:none;box-shadow:0 0 0 2px var(--blue) inset}
+.crow small{font-size:13px;color:var(--muted)}
+.warnings{margin:4px 0 0;padding:12px 14px;background:var(--red-soft);color:var(--red);border-radius:12px;font-size:13px;font-weight:500}
+.warnings:empty{display:none}
+.empty{padding:28px 0 12px;text-align:center;color:var(--muted);font-size:15px}
+
+/* result */
+.rows{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:14px;padding:12px 0}
+.row .mid{flex:1;min-width:0}
+.row .t{font-size:16px;font-weight:600}
+.row .s{font-size:13px;color:var(--muted)}
+.row .r{text-align:right}
+.row .amt{font-size:17px;font-weight:700}
+.row .lab{font-size:12px;color:var(--muted)}
+.amt.plus{color:var(--blue)} .amt.minus{color:var(--red)} .amt.zero{color:var(--faint)}
+.route{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600}
+.route .arr{color:var(--faint);font-weight:400}
+.allclear{padding:16px;border-radius:14px;background:var(--fill);color:var(--sub);text-align:center;font-size:15px;font-weight:600}
+.divider{height:1px;background:var(--fill);margin:16px 0}
+.sub-h{font-size:15px;font-weight:700;margin:0 0 4px;color:var(--ink-2)}
+.tx-form{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-top:12px}
+.tx-form select{appearance:none;-webkit-appearance:none;border:0;background:var(--fill);border-radius:12px;padding:12px 14px;font-size:15px;font-weight:600}
+.tx-form .arr{color:var(--faint)}
+.tx-form .field{grid-column:span 3}
+.tx-form .two{grid-column:span 3;display:flex;gap:8px}
+.danger{display:block;margin:20px auto 0;color:var(--muted);font-size:14px;padding:8px}
+.danger:hover{color:var(--red)}
+
+/* bottom bar */
+.bottom{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent);z-index:5}
+.bottom .in{max-width:560px;margin:0 auto}
+.cta{width:100%;background:var(--blue);color:#fff;border-radius:16px;padding:16px;font-size:17px;font-weight:700}
+.cta:active{background:var(--blue-press)}
+.cta:disabled{background:var(--fill-2);color:var(--faint);cursor:default}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(12px);opacity:0;background:rgba(25,31,40,.92);color:#fff;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:500;transition:.2s;pointer-events:none;z-index:10;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){.toast,.part{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <nav class="trips" id="tabs" aria-label="정산 목록"></nav>
+
+  <header class="hero">
+    <input class="trip-name" id="tripName" aria-label="정산 이름" placeholder="정산 이름">
+    <div class="hero-total num" id="heroTotal">0원</div>
+    <div class="hero-sub" id="heroSub"></div>
+    <div class="status"><span class="dot" id="syncDot"></span><span id="syncText">이 기기에 저장됨</span></div>
+  </header>
+
+  <section class="card" aria-labelledby="hPeople">
+    <div class="card-h"><h2 id="hPeople">멤버<span class="count" id="peopleCount"></span></h2></div>
+    <div class="members" id="people"></div>
+    <form class="add-member" id="addPersonForm">
+      <input class="field" id="newPerson" placeholder="이름 (쉼표로 여러 명)" aria-label="새 멤버 이름" autocomplete="off">
+      <button class="btn" type="submit">추가</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="hItems">
+    <div class="card-h"><h2 id="hItems">지출 내역<span class="count" id="itemCount"></span></h2></div>
+    <div class="items" id="sheet"></div>
+    <p class="warnings" id="warnings"></p>
+  </section>
+
+  <section class="card" aria-labelledby="hResult">
+    <div class="card-h"><h2 id="hResult">정산 결과</h2><button class="link" id="copyBtn">결과 복사</button></div>
+    <div class="rows" id="result"></div>
+    <div class="divider"></div>
+    <h3 class="sub-h">이렇게 보내면 끝나요</h3>
+    <div class="rows" id="moves"></div>
+  </section>
+
+  <section class="card" aria-labelledby="hDone">
+    <div class="card-h"><h2 id="hDone">주고받은 돈</h2></div>
+    <p class="hint">선금, 중간 송금, 환불처럼 이미 오간 돈을 남기면 정산에 반영돼요.</p>
+    <div class="rows" id="done"></div>
+    <div class="tx-form" id="txForm">
+      <select id="txFrom" aria-label="보낸 사람"></select><span class="arr">→</span><select id="txTo" aria-label="받은 사람"></select>
+      <div class="two">
+        <input class="field num" id="txAmt" inputmode="numeric" placeholder="금액" aria-label="금액">
+        <input class="field" id="txMemo" placeholder="메모" aria-label="메모">
+      </div>
+      <button class="btn" id="txAdd" style="grid-column:span 3">기록하기</button>
+    </div>
+  </section>
+
+  <button class="danger" id="delTrip">이 정산 삭제하기</button>
+</div>
+<div class="bottom"><div class="in"><button class="cta" id="addItem">지출 추가하기</button></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=n=>(n<0?"-":"")+Math.abs(Math.round(n)).toLocaleString("ko-KR");
+const won=n=>fmt(n)+"원";
+const parseNum=s=>{const t=String(s).replace(/[^0-9-]/g,"").replace(/(?!^)-/g,"");if(t===""||t==="-")return null;const n=parseInt(t,10);return isNaN(n)?null:n;};
+const LS="settle-app-v1";
+const newTrip=name=>({id:uid(),name:name||"새 정산",people:[],items:[],transfers:[]});
+let state=null;
+try{const raw=localStorage.getItem(LS);if(raw)state=JSON.parse(raw);}catch(e){}
+if(!state||!Array.isArray(state.trips)||!state.trips.length){const t=newTrip("새 정산");state={v:1,active:t.id,trips:[t]};}
+const cur=()=>state.trips.find(t=>t.id===state.active)||state.trips[0];
+const pname=(t,id)=>{const p=t.people.find(p=>p.id===id);return p?(p.name||"이름 없음"):"?";};
+const COLORS=["#3182F6","#F04452","#03B26C","#FE9800","#8B5CF6","#00A8C6","#E64980","#6B7684"];
+const pcolor=(t,id)=>COLORS[Math.max(0,t.people.findIndex(p=>p.id===id))%COLORS.length];
+const initial=n=>(String(n||"?").trim()[0]||"?");
+const av=(t,id,cls="")=>`<span class="av ${cls}" style="--c:${pcolor(t,id)}">${esc(initial(pname(t,id)))}</span>`;
+const openCustom=new Set();
+/* ---------- calculation ---------- */
+function splitItem(item,people){
+  const out={};let fixed=0;const autos=[];
+  for(const p of people){
+    const s=item.shares[p.id];
+    if(s==="x"){out[p.id]=null;}
+    else if(typeof s==="number"){out[p.id]=s;fixed+=s;}
+    else autos.push(p.id);
+  }
+  const amount=item.amount||0;const rem=amount-fixed;let ok=true;
+  if(autos.length){
+    const base=Math.floor(rem/autos.length);let r=rem-base*autos.length;
+    autos.forEach(id=>{out[id]=base+(r>0?1:0);if(r>0)r--;});
+  }else if(rem!==0)ok=false;
+  return {shares:out,ok,autos,diff:rem};
+}
+function compute(t){
+  const share={},paid={},sent={},recv={};
+  t.people.forEach(p=>{share[p.id]=0;paid[p.id]=0;sent[p.id]=0;recv[p.id]=0;});
+  let total=0;const bad=[],noPayer=[];
+  const splits={};
+  for(const it of t.items){
+    const s=splitItem(it,t.people);splits[it.id]=s;
+    total+=it.amount||0;
+    for(const id in s.shares)if(s.shares[id]!=null)share[id]+=s.shares[id];
+    if(it.payer&&paid[it.payer]!=null)paid[it.payer]+=it.amount||0;
+    else if(it.amount)noPayer.push(it);
+    if(!s.ok)bad.push({it,s});
+  }
+  for(const x of t.transfers){if(sent[x.from]!=null)sent[x.from]+=x.amount;if(recv[x.to]!=null)recv[x.to]+=x.amount;}
+  const bal={};t.people.forEach(p=>{bal[p.id]=paid[p.id]-share[p.id]+sent[p.id]-recv[p.id];});
+  const cred=[],debt=[];
+  t.people.forEach(p=>{const b=Math.round(bal[p.id]);if(b>0)cred.push({id:p.id,v:b});else if(b<0)debt.push({id:p.id,v:-b});});
+  cred.sort((a,b)=>b.v-a.v);debt.sort((a,b)=>b.v-a.v);
+  const moves=[];let i=0,j=0;
+  while(i<debt.length&&j<cred.length){
+    const m=Math.min(debt[i].v,cred[j].v);
+    if(m>0)moves.push({from:debt[i].id,to:cred[j].id,amount:m});
+    debt[i].v-=m;cred[j].v-=m;if(debt[i].v===0)i++;if(cred[j].v===0)j++;
+  }
+  return {share,paid,sent,recv,bal,total,splits,moves,bad,noPayer};
+}
+
+/* ---------- render ---------- */
+function renderTabs(){
+  $("#tabs").innerHTML=state.trips.map(t=>`<button class="trip" data-trip="${t.id}" aria-current="${t.id===state.active}">${esc(t.name||"이름 없음")}</button>`).join("")+`<button class="trip add" id="addTrip">+ 새 정산</button>`;
+}
+function renderPeople(){
+  const t=cur();
+  $("#people").innerHTML=t.people.length?t.people.map(p=>`<span class="member" data-pid="${p.id}">${av(t,p.id)}<input class="in-pname" value="${esc(p.name)}" aria-label="이름" style="--len:${Math.max(2,(p.name||"").length)}"><button class="x" data-delp="${p.id}" aria-label="${esc(p.name)} 삭제">✕</button></span>`).join(""):`<p class="hint">함께한 사람을 먼저 추가해주세요.</p>`;
+  $("#peopleCount").textContent=t.people.length?` ${t.people.length}`:"";
+}
+function payerOptions(t,sel){
+  return `<option value="">결제자 선택</option>`+t.people.map(p=>`<option value="${p.id}" ${p.id===sel?"selected":""}>${esc(p.name||"이름 없음")} 결제</option>`).join("");
+}
+function itemHTML(t,it){
+  const hasFixed=t.people.some(p=>typeof it.shares[p.id]==="number");
+  if(hasFixed)openCustom.add(it.id);
+  const open=openCustom.has(it.id);
+  const parts=t.people.map(p=>{const off=it.shares[p.id]==="x";
+    return `<button class="part" data-pid="${p.id}" aria-pressed="${!off}">${av(t,p.id,"sm")}<span>${esc(p.name||"이름 없음")}</span><span class="pv num"></span></button>`;}).join("");
+  const crows=t.people.filter(p=>it.shares[p.id]!=="x").map(p=>{const s=it.shares[p.id];const fixed=typeof s==="number";
+    return `<div class="crow" data-pid="${p.id}"><span class="cn">${esc(p.name||"이름 없음")}</span><input class="in-share num${fixed?" fixed":""}" inputmode="numeric" value="${fixed?fmt(s):""}" aria-label="${esc(p.name)} 부담액"><small>원</small></div>`;}).join("");
+  return `<div class="item" data-iid="${it.id}">
+    <div class="item-row"><input class="in-iname" value="${esc(it.name)}" placeholder="어디에 썼나요?" aria-label="항목 이름"><button class="more del-item" aria-label="항목 삭제">✕</button></div>
+    <label class="item-amt"><input class="in-amt num" inputmode="numeric" value="${it.amount?fmt(it.amount):""}" placeholder="0" aria-label="결제금액" size="1"><span>원</span></label>
+    <div class="item-meta"><span class="payer${it.payer?"":" none"}"><select class="in-payer" aria-label="결제자">${payerOptions(t,it.payer)}</select></span><input class="in-memo" value="${esc(it.memo)}" placeholder="메모 추가" aria-label="메모"></div>
+    <div class="parts">${parts}</div>
+    <button class="split-toggle" aria-expanded="${open}">${open?"금액 직접 나누기 닫기":"금액 직접 나누기"}</button>
+    <div class="custom" ${open?"":"hidden"}>${crows||'<p class="hint" style="padding:8px 0">참여한 사람이 없어요.</p>'}</div>
+  </div>`;
+}
+function fitAmt(inp){const v=inp.value||inp.placeholder||"0";const c=(v.match(/,/g)||[]).length;inp.style.width=Math.max(1,v.length-c)+c*0.35+0.15+"ch";}
+function renderSheet(){
+  const t=cur();const box=$("#sheet");
+  $("#addItem").disabled=!t.people.length;
+  if(!t.people.length){box.innerHTML=`<div class="empty">멤버를 추가하면 지출을 적을 수 있어요.</div>`;return;}
+  box.innerHTML=t.items.length?t.items.map(it=>itemHTML(t,it)).join(""):`<div class="empty">아직 지출이 없어요.<br>아래 버튼으로 첫 지출을 추가해보세요.</div>`;
+  box.querySelectorAll(".in-amt").forEach(fitAmt);
+}
+function rerenderItem(it){
+  const el=document.querySelector(`.item[data-iid="${it.id}"]`);if(!el)return;
+  el.outerHTML=itemHTML(cur(),it);
+  const n=document.querySelector(`.item[data-iid="${it.id}"] .in-amt`);if(n)fitAmt(n);
+}
+function renderTxForm(){
+  const t=cur();const opts=t.people.map(p=>`<option value="${p.id}">${esc(p.name||"이름 없음")}</option>`).join("");
+  const f=$("#txFrom").value,to=$("#txTo").value;
+  $("#txFrom").innerHTML=opts;$("#txTo").innerHTML=opts;
+  if(f&&t.people.some(p=>p.id===f))$("#txFrom").value=f;
+  if(to&&t.people.some(p=>p.id===to))$("#txTo").value=to;else if(t.people[1])$("#txTo").value=t.people[1].id;
+  $("#txForm").style.display=t.people.length>1?"":"none";
+}
+let last=null;
+function recalc(){
+  const t=cur();const c=compute(t);last=c;
+  document.querySelectorAll("#sheet .item").forEach(el=>{
+    const s=c.splits[el.dataset.iid];if(!s)return;
+    el.querySelectorAll(".part").forEach(b=>{const v=s.shares[b.dataset.pid];b.querySelector(".pv").textContent=v==null?"":fmt(v);});
+    el.querySelectorAll(".crow").forEach(r=>{const v=s.shares[r.dataset.pid];r.querySelector("input").placeholder=v==null?"":fmt(v);});
+    el.classList.toggle("warn",!s.ok);
+  });
+  $("#heroTotal").textContent=won(c.total);
+  $("#heroSub").textContent=t.people.length?`${t.people.length}명 · 지출 ${t.items.length}건`+(t.people.length&&c.total?` · 1인 평균 ${won(c.total/t.people.length)}`:""):"멤버와 지출을 추가해보세요";
+  $("#itemCount").textContent=t.items.length?` ${t.items.length}`:"";
+  const w=[];
+  c.bad.forEach(({it,s})=>w.push(`‘${it.name||"이름 없는 항목"}’ 나눈 금액이 결제금액과 ${won(Math.abs(s.diff))} 달라요.`));
+  if(c.noPayer.length)w.push(`결제자를 고르지 않은 지출이 ${c.noPayer.length}건 있어요. 결과에 반영되지 않아요.`);
+  $("#warnings").innerHTML=w.map(esc).join("<br>");
+  $("#result").innerHTML=t.people.length?t.people.map(p=>{
+    const b=Math.round(c.bal[p.id]);const cls=b>0?"plus":b<0?"minus":"zero";
+    const label=b>0?"받을 돈":b<0?"보낼 돈":"정산 완료";
+    const tx=c.sent[p.id]-c.recv[p.id];
+    return `<div class="row">${av(t,p.id)}<div class="mid"><div class="t">${esc(p.name||"이름 없음")}</div><div class="s num">내 몫 ${won(c.share[p.id])} · 결제 ${won(c.paid[p.id])}${tx?` · 송금 ${tx>0?"+":""}${won(tx)}`:""}</div></div><div class="r"><div class="amt num ${cls}">${b===0?"0원":won(Math.abs(b))}</div><div class="lab">${label}</div></div></div>`;
+  }).join(""):`<p class="hint">멤버와 지출을 추가하면 결과가 나와요.</p>`;
+  $("#moves").innerHTML=c.moves.length?c.moves.map((m,i)=>`<div class="row">${av(t,m.from)}<div class="mid"><div class="route">${esc(pname(t,m.from))}<span class="arr">→</span>${esc(pname(t,m.to))}</div><div class="s num">${won(m.amount)}</div></div><button class="btn sm" data-mark="${i}">보냈어요</button></div>`).join("")
+    :`<div class="allclear">${t.items.length?"모두 정산됐어요 🎉":"아직 보낼 돈이 없어요"}</div>`;
+  $("#done").innerHTML=t.transfers.map(x=>`<div class="row">${av(t,x.from)}<div class="mid"><div class="route">${esc(pname(t,x.from))}<span class="arr">→</span>${esc(pname(t,x.to))}</div><div class="s">${x.memo?esc(x.memo):"송금"}</div></div><div class="r"><div class="amt num">${won(x.amount)}</div></div><button class="more" data-deltx="${x.id}" aria-label="기록 삭제">✕</button></div>`).join("");
+}
+function render(){
+  renderTabs();
+  $("#tripName").value=cur().name||"";
+  renderPeople();renderSheet();renderTxForm();recalc();
+}
+
+/* ---------- persistence ---------- */
+let ref=null,lastSynced=null,saveTimer=null,writing=Promise.resolve(),canShare=false,pendingRemote=null;
+function setStatus(){
+  $("#syncDot").classList.toggle("on",canShare);
+  $("#syncText").textContent=canShare?"자동 저장 중 · 링크로 함께 볼 수 있어요":"이 기기에 저장됨";
+}
+function save(){
+  try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+  if(!ref)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    saveTimer=null;
+    const json=JSON.stringify(state);if(json===lastSynced)return;
+    writing=writing.then(()=>ref.set({json,updatedAt:Date.now()})).then(()=>{lastSynced=json;}).catch(e=>{
+      if(e&&e.code==="invalid_argument"){ref=null;canShare=false;setStatus();}
+    });
+  },700);
+}
+const changed=()=>{recalc();save();};
+const changedAll=()=>{render();save();};
+function editing(){const a=document.activeElement;return a&&a!==document.body&&$("#app").contains(a)&&(a.tagName==="INPUT"||a.tagName==="SELECT");}
+function applyRemote(json){
+  if(json===lastSynced||json===JSON.stringify(state))return;
+  if(saveTimer)return;
+  if(editing()){pendingRemote=json;return;}
+  try{const s=JSON.parse(json);if(s&&Array.isArray(s.trips)&&s.trips.length){
+    const keep=state.active;state=s;if(s.trips.some(t=>t.id===keep))state.active=keep;
+    lastSynced=json;try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}render();
+  }}catch(e){}
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{if(pendingRemote&&!editing()){const j=pendingRemote;pendingRemote=null;applyRemote(j);}},0));
+async function connect(){
+  if(!window.claude||typeof window.claude.use!=="function")return;
+  let db=null;try{db=await window.claude.use("db");}catch(e){}
+  if(!db)return;
+  ref=db.doc("settle/state");let first=true;
+  ref.onSnapshot(snap=>{
+    if(first){first=false;canShare=true;setStatus();
+      if(!snap.exists){save();return;}
+    }
+    if(snap.exists){const d=snap.data();if(d&&typeof d.json==="string")applyRemote(d.json);}
+  },()=>{ref=null;canShare=false;setStatus();});
+}
+
+/* ---------- events ---------- */
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),1800);}
+const itemOf=el=>{const c=el.closest(".item[data-iid]");return c?cur().items.find(i=>i.id===c.dataset.iid):null;};
+
+$("#tripName").addEventListener("input",e=>{cur().name=e.target.value;renderTabs();save();});
+$("#tabs").addEventListener("click",e=>{
+  const b=e.target.closest("[data-trip]");
+  if(b){state.active=b.dataset.trip;changedAll();return;}
+  if(e.target.closest("#addTrip")){
+    const prev=cur();const t=newTrip("새 정산");
+    t.people=prev.people.map(p=>({id:uid(),name:p.name}));
+    state.trips.push(t);state.active=t.id;changedAll();
+    setTimeout(()=>{$("#tripName").focus();$("#tripName").select();},0);
+  }
+});
+$("#delTrip").addEventListener("click",()=>{
+  const t=cur();if(!confirm(`‘${t.name||"이 정산"}’을(를) 삭제할까요? 되돌릴 수 없어요.`))return;
+  state.trips=state.trips.filter(x=>x.id!==t.id);
+  if(!state.trips.length)state.trips.push(newTrip("새 정산"));
+  state.active=state.trips[0].id;changedAll();
+});
+$("#addPersonForm").addEventListener("submit",e=>{
+  e.preventDefault();const inp=$("#newPerson");
+  const names=inp.value.split(/[,\s]+/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length)return;
+  names.forEach(n=>cur().people.push({id:uid(),name:n}));
+  inp.value="";changedAll();inp.focus();
+});
+$("#people").addEventListener("input",e=>{
+  if(!e.target.classList.contains("in-pname"))return;
+  const id=e.target.closest(".member").dataset.pid;const p=cur().people.find(p=>p.id===id);
+  p.name=e.target.value;e.target.style.setProperty("--len",Math.max(2,p.name.length));
+  save();
+});
+$("#people").addEventListener("focusout",e=>{if(e.target.classList.contains("in-pname"))setTimeout(()=>{if(!editing()||!$("#people").contains(document.activeElement)){renderSheet();renderTxForm();recalc();}},0);});
+$("#people").addEventListener("click",e=>{
+  const b=e.target.closest("[data-delp]");if(!b)return;
+  const t=cur();const id=b.dataset.delp;const p=t.people.find(p=>p.id===id);
+  const used=t.items.some(i=>i.payer===id)||t.transfers.some(x=>x.from===id||x.to===id);
+  if(used&&!confirm(`${p.name||"이 사람"}이(가) 결제했거나 송금 기록이 있어요. 삭제할까요?`))return;
+  t.people=t.people.filter(x=>x.id!==id);
+  t.items.forEach(i=>{delete i.shares[id];if(i.payer===id)i.payer="";});
+  t.transfers=t.transfers.filter(x=>x.from!==id&&x.to!==id);
+  changedAll();
+});
+let lastPayer="";
+$("#addItem").addEventListener("click",()=>{
+  const t=cur();if(!t.people.length)return;
+  const payer=t.people.some(p=>p.id===lastPayer)?lastPayer:(t.people[0]?.id||"");
+  t.items.push({id:uid(),name:"",amount:0,payer,shares:{},memo:""});
+  changedAll();
+  const items=document.querySelectorAll("#sheet .item");const r=items[items.length-1];
+  if(r){r.scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});r.querySelector(".in-iname").focus({preventScroll:true});}
+});
+const sheet=$("#sheet");
+sheet.addEventListener("input",e=>{
+  const it=itemOf(e.target);if(!it)return;const c=e.target.classList;
+  if(c.contains("in-iname")){it.name=e.target.value;save();recalc();}
+  else if(c.contains("in-memo")){it.memo=e.target.value;save();}
+  else if(c.contains("in-amt")){it.amount=parseNum(e.target.value)||0;fitAmt(e.target);changed();}
+  else if(c.contains("in-share")){
+    const pid=e.target.closest(".crow").dataset.pid;const v=parseNum(e.target.value);
+    if(v==null)delete it.shares[pid];else it.shares[pid]=v;
+    e.target.classList.toggle("fixed",v!=null);changed();
+  }
+});
+sheet.addEventListener("change",e=>{
+  if(!e.target.classList.contains("in-payer"))return;
+  const it=itemOf(e.target);it.payer=e.target.value;lastPayer=it.payer;
+  e.target.parentElement.classList.toggle("none",!it.payer);changed();
+});
+sheet.addEventListener("focusin",e=>{if(e.target.classList.contains("num")){e.target.value=e.target.value.replace(/,/g,"");}});
+sheet.addEventListener("focusout",e=>{
+  if(e.target.classList.contains("num")){const v=parseNum(e.target.value);e.target.value=v==null||(v===0&&e.target.classList.contains("in-amt"))?"":fmt(v);if(e.target.classList.contains("in-amt"))fitAmt(e.target);}
+});
+sheet.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||e.target.tagName!=="INPUT")return;e.preventDefault();
+  const card=e.target.closest(".item");
+  if(e.target.classList.contains("in-iname"))card.querySelector(".in-amt").focus();
+  else e.target.blur();
+});
+sheet.addEventListener("click",e=>{
+  const part=e.target.closest(".part");
+  if(part){const it=itemOf(part);const pid=part.dataset.pid;
+    if(it.shares[pid]==="x")delete it.shares[pid];else it.shares[pid]="x";
+    rerenderItem(it);changed();
+    const again=document.querySelector(`.item[data-iid="${it.id}"] .part[data-pid="${pid}"]`);if(again)again.focus();
+    return;}
+  const tg=e.target.closest(".split-toggle");
+  if(tg){const it=itemOf(tg);
+    if(openCustom.has(it.id)){
+      const hasFixed=cur().people.some(p=>typeof it.shares[p.id]==="number");
+      if(hasFixed&&!confirm("직접 입력한 금액을 지우고 N분의 1로 돌릴까요?"))return;
+      cur().people.forEach(p=>{if(typeof it.shares[p.id]==="number")delete it.shares[p.id];});
+      openCustom.delete(it.id);
+    }else openCustom.add(it.id);
+    rerenderItem(it);changed();return;}
+  const del=e.target.closest(".del-item");
+  if(del){const it=itemOf(del);const t=cur();
+    if((it.name||it.amount)&&!confirm(`‘${it.name||"이 지출"}’을(를) 삭제할까요?`))return;
+    t.items=t.items.filter(i=>i!==it);changedAll();}
+});
+$("#txAmt").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#txAdd").click();}});
+$("#txAdd").addEventListener("click",()=>{
+  const from=$("#txFrom").value,to=$("#txTo").value,amt=parseNum($("#txAmt").value);
+  if(!from||!to||from===to){toast("보낸 사람과 받은 사람을 다르게 골라주세요");return;}
+  if(!amt){toast("금액을 입력해주세요");$("#txAmt").focus();return;}
+  cur().transfers.push({id:uid(),from,to,amount:amt,memo:$("#txMemo").value.trim()});
+  $("#txAmt").value="";$("#txMemo").value="";changed();toast("기록했어요");
+});
+$("#moves").addEventListener("click",e=>{
+  const b=e.target.closest("[data-mark]");if(!b||!last)return;
+  const m=last.moves[+b.dataset.mark];if(!m)return;
+  cur().transfers.push({id:uid(),from:m.from,to:m.to,amount:m.amount,memo:"정산 송금"});changed();toast("주고받은 돈에 기록했어요");
+});
+$("#done").addEventListener("click",e=>{
+  const b=e.target.closest("[data-deltx]");if(!b)return;
+  const t=cur();t.transfers=t.transfers.filter(x=>x.id!==b.dataset.deltx);changed();
+});
+$("#copyBtn").addEventListener("click",async()=>{
+  const t=cur();const c=last||compute(t);
+  const lines=[`[${t.name||"정산"}] 총 ${won(c.total)}`,""];
+  t.people.forEach(p=>{const b=Math.round(c.bal[p.id]);lines.push(`${p.name}: 내 몫 ${won(c.share[p.id])} · ${b>0?`받을 돈 ${won(b)}`:b<0?`보낼 돈 ${won(-b)}`:"정산 완료"}`);});
+  if(c.moves.length){lines.push("","[송금]");c.moves.forEach(m=>lines.push(`${pname(t,m.from)} → ${pname(t,m.to)} ${won(m.amount)}`));}
+  const text=lines.join("\n");let ok=false;
+  try{await navigator.clipboard.writeText(text);ok=true;}catch(e){
+    const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();
+    try{ok=document.execCommand("copy");}catch(_){}ta.remove();
+  }
+  toast(ok?"복사했어요. 단톡방에 붙여넣으세요":"복사가 막혀 있어요");
+});
+
+render();setStatus();connect();
+})();
+</script>
+</body>
+</html>
