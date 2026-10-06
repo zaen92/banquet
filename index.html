@@ -46,12 +46,23 @@ input{min-width:0}
 .trip[aria-current="true"]{background:var(--ink);color:var(--card)}
 .trip.add{color:var(--muted)}
 
+.topbar{display:flex;align-items:center;gap:8px}
+.topbar .trips{flex:1;min-width:0}
+.save{flex:none;padding:8px 16px;border-radius:999px;background:var(--blue);color:#fff;font-size:15px;font-weight:700;margin-bottom:8px}
+.save:active{background:var(--blue-press)}
+.save:disabled{opacity:.6}
+.title-label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.title-row{display:flex;align-items:center;gap:6px;border-bottom:2px solid var(--fill-2);transition:border-color .15s}
+.title-row:focus-within{border-color:var(--blue)}
+.pen{width:32px;height:32px;border-radius:10px;color:var(--muted);display:grid;place-items:center;flex:none}
+.pen:hover{background:var(--fill);color:var(--ink)}
+.dot.busy{background:#FE9800}
 /* hero */
 .hero{padding:12px 4px 24px}
-.trip-name{display:block;width:100%;border:0;background:transparent;font-size:22px;font-weight:700;color:var(--ink);padding:0}
+.trip-name{display:block;flex:1;width:100%;border:0;background:transparent;font-size:24px;font-weight:800;color:var(--ink);padding:4px 0 6px}
 .trip-name::placeholder{color:var(--faint)}
 .trip-name:focus{outline:none}
-.hero-total{font-size:34px;font-weight:800;letter-spacing:-0.03em;margin-top:6px;line-height:1.2}
+.hero-total{font-size:34px;margin-top:16px!important;font-weight:800;letter-spacing:-0.03em;margin-top:6px;line-height:1.2}
 .hero-sub{font-size:15px;color:var(--muted);margin-top:4px}
 .status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:10px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
@@ -168,10 +179,17 @@ input{min-width:0}
 </head>
 <body>
 <div class="wrap" id="app">
-  <nav class="trips" id="tabs" aria-label="정산 목록"></nav>
+  <div class="topbar">
+    <nav class="trips" id="tabs" aria-label="정산 목록"></nav>
+    <button class="save" id="saveBtn">저장</button>
+  </div>
 
   <header class="hero">
-    <input class="trip-name" id="tripName" aria-label="정산 이름" placeholder="정산 이름">
+    <label class="title-label" for="tripName">정산 제목</label>
+    <div class="title-row">
+      <input class="trip-name" id="tripName" placeholder="예: 속초 2박 3일" maxlength="40" autocomplete="off">
+      <button class="pen" id="editTitle" aria-label="제목 수정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+    </div>
     <div class="hero-total num" id="heroTotal">0원</div>
     <div class="hero-sub" id="heroSub"></div>
     <div class="status"><span class="dot" id="syncDot"></span><span id="syncText">이 기기에 저장됨</span></div>
@@ -228,7 +246,7 @@ const fmt=n=>(n<0?"-":"")+Math.abs(Math.round(n)).toLocaleString("ko-KR");
 const won=n=>fmt(n)+"원";
 const parseNum=s=>{const t=String(s).replace(/[^0-9-]/g,"").replace(/(?!^)-/g,"");if(t===""||t==="-")return null;const n=parseInt(t,10);return isNaN(n)?null:n;};
 const LS="settle-app-v1";
-const newTrip=name=>({id:uid(),name:name||"새 정산",people:[],items:[],transfers:[]});
+const newTrip=name=>({id:uid(),name:name??"",people:[],items:[],transfers:[]});
 let state=null;
 try{const raw=localStorage.getItem(LS);if(raw)state=JSON.parse(raw);}catch(e){}
 if(!state||!Array.isArray(state.trips)||!state.trips.length){const t=newTrip("새 정산");state={v:1,active:t.id,trips:[t]};}
@@ -284,7 +302,7 @@ function compute(t){
 
 /* ---------- render ---------- */
 function renderTabs(){
-  $("#tabs").innerHTML=state.trips.map(t=>`<button class="trip" data-trip="${t.id}" aria-current="${t.id===state.active}">${esc(t.name||"이름 없음")}</button>`).join("")+`<button class="trip add" id="addTrip">+ 새 정산</button>`;
+  $("#tabs").innerHTML=state.trips.map(t=>`<button class="trip" data-trip="${t.id}" aria-current="${t.id===state.active}">${esc(t.name||"제목 없음")}</button>`).join("")+`<button class="trip add" id="addTrip">+ 새 정산</button>`;
 }
 function renderPeople(){
   const t=cur();
@@ -366,22 +384,40 @@ function render(){
 
 /* ---------- persistence ---------- */
 let ref=null,lastSynced=null,saveTimer=null,writing=Promise.resolve(),canShare=false,pendingRemote=null;
+let savedAt=null,dirty=false;
+const hhmm=d=>d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"});
 function setStatus(){
-  $("#syncDot").classList.toggle("on",canShare);
-  $("#syncText").textContent=canShare?"자동 저장 중 · 링크로 함께 볼 수 있어요":"이 기기에 저장됨";
+  $("#syncDot").classList.toggle("on",!dirty);
+  $("#syncDot").classList.toggle("busy",dirty);
+  const where=canShare?"링크로 함께 볼 수 있어요":"이 기기에 저장돼요";
+  $("#syncText").textContent=dirty?"저장 중…":(savedAt?`${hhmm(savedAt)}에 저장됨 · ${where}`:where);
+}
+function flush(){
+  saveTimer=null;
+  try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
+  if(!ref){dirty=false;savedAt=new Date();setStatus();return Promise.resolve(true);}
+  const json=JSON.stringify(state);
+  if(json===lastSynced){dirty=false;savedAt=savedAt||new Date();setStatus();return Promise.resolve(true);}
+  writing=writing.then(()=>ref.set({json,updatedAt:Date.now()})).then(()=>{lastSynced=json;dirty=false;savedAt=new Date();setStatus();return true;}).catch(e=>{
+    if(e&&e.code==="invalid_argument"){ref=null;canShare=false;}
+    dirty=false;savedAt=new Date();setStatus();return !!(e&&e.code==="invalid_argument");
+  });
+  return writing;
 }
 function save(){
   try{localStorage.setItem(LS,JSON.stringify(state));}catch(e){}
-  if(!ref)return;
+  dirty=true;setStatus();
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    saveTimer=null;
-    const json=JSON.stringify(state);if(json===lastSynced)return;
-    writing=writing.then(()=>ref.set({json,updatedAt:Date.now()})).then(()=>{lastSynced=json;}).catch(e=>{
-      if(e&&e.code==="invalid_argument"){ref=null;canShare=false;setStatus();}
-    });
-  },700);
+  saveTimer=setTimeout(flush,700);
 }
+async function saveNow(){
+  clearTimeout(saveTimer);
+  const btn=$("#saveBtn");btn.disabled=true;
+  const ok=await flush();
+  btn.disabled=false;
+  toast(ok?"저장했어요":"저장하지 못했어요. 잠시 후 다시 눌러주세요");
+}
+window.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="s"){e.preventDefault();saveNow();}});
 const changed=()=>{recalc();save();};
 const changedAll=()=>{render();save();};
 function editing(){const a=document.activeElement;return a&&a!==document.body&&$("#app").contains(a)&&(a.tagName==="INPUT"||a.tagName==="SELECT");}
@@ -401,7 +437,7 @@ async function connect(){
   if(!db)return;
   ref=db.doc("settle/state");let first=true;
   ref.onSnapshot(snap=>{
-    if(first){first=false;canShare=true;setStatus();
+    if(first){first=false;canShare=true;if(!savedAt)savedAt=new Date();setStatus();
       if(!snap.exists){save();return;}
     }
     if(snap.exists){const d=snap.data();if(d&&typeof d.json==="string")applyRemote(d.json);}
@@ -417,7 +453,7 @@ $("#tabs").addEventListener("click",e=>{
   const b=e.target.closest("[data-trip]");
   if(b){state.active=b.dataset.trip;changedAll();return;}
   if(e.target.closest("#addTrip")){
-    const prev=cur();const t=newTrip("새 정산");
+    const prev=cur();const t=newTrip("");
     t.people=prev.people.map(p=>({id:uid(),name:p.name}));
     state.trips.push(t);state.active=t.id;changedAll();
     setTimeout(()=>{$("#tripName").focus();$("#tripName").select();},0);
@@ -540,7 +576,10 @@ $("#copyBtn").addEventListener("click",async()=>{
   toast(ok?"복사했어요. 단톡방에 붙여넣으세요":"복사가 막혀 있어요");
 });
 
-render();setStatus();connect();
+$("#saveBtn").addEventListener("click",saveNow);
+$("#editTitle").addEventListener("click",()=>{const i=$("#tripName");i.focus();i.select();});
+$("#tripName").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.target.blur();}});
+render();savedAt=new Date();setStatus();connect();
 })();
 </script>
 </body>
